@@ -1,32 +1,14 @@
-/**
- * Jenkinsfile - Declarative Pipeline for the devops-demo project.
- *
- * This pipeline runs on every build and performs the following stages:
- *   1. Checkout - Retrieve the source code from the GitHub repository.
- *   2. Build    - Check the Python version and perform a syntax check.
- *   3. Test     - Run the unit tests. The pipeline fails if any test fails.
- *   4. Result   - Display a clear success or failure message.
- *
- * The pipeline is configured as "Pipeline script from SCM" so Jenkins
- * reads this file directly from the repository (Jenkinsfile path).
- */
-
 pipeline {
     agent any
 
     environment {
-        // Define environment variables used across stages.
         PROJECT_NAME = "devops-demo"
-        PYTHON_VERSION = "3"
     }
 
     stages {
-
         stage('Checkout') {
             steps {
-                // SCM checkout is handled by the "Pipeline script from SCM"
-                // configuration in the job. This stage confirms the checkout.
-                echo "==> Checking out source code from GitHub..."
+                echo '==> Source code checked out from GitHub'
                 echo "==> Repository: ${env.GIT_URL}"
                 echo "==> Branch: ${env.GIT_BRANCH}"
             }
@@ -34,28 +16,40 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo "==> Build stage: checking Python and syntax..."
-                sh '''
-                    echo "Python version:"
-                    python3 --version
-                    echo ""
-                    echo "Checking Python syntax of all .py files:"
-                    find . -name "*.py" -print0 | xargs -0 -I {} python3 -m py_compile {}
-                    echo "Syntax check passed."
+                echo '==> Build stage: checking Python and syntax...'
+                bat '''
+                    @echo off
+                    echo Python version:
+                    python --version
+                    echo.
+                    echo Checking syntax of all Python files:
+                    for %%f in (*.py) do (
+                        python -m py_compile "%%f"
+                        if errorlevel 1 (
+                            echo ERROR: Syntax error in %%f
+                            exit /b 1
+                        )
+                    )
+                    echo Syntax check passed for all Python files.
                 '''
             }
         }
 
         stage('Test') {
             steps {
-                echo "==> Test stage: running unit tests..."
-                sh '''
-                    echo "Installing test dependencies (if any)..."
-                    python3 -m pip install --quiet --upgrade pip
-                    python3 -m pip install --quiet flask pytest
-                    echo ""
-                    echo "Running unit tests:"
-                    python3 -m pytest test_app.py -v
+                echo '==> Test stage: running unit tests...'
+                bat '''
+                    @echo off
+                    echo Installing dependencies...
+                    python -m pip install --quiet flask pytest
+                    echo.
+                    echo Running tests:
+                    python -m pytest test_app.py -v
+                    if errorlevel 1 (
+                        echo.
+                        echo !!! UNIT TESTS FAILED !!!
+                        exit /b 1
+                    )
                 '''
             }
         }
@@ -64,15 +58,14 @@ pipeline {
             steps {
                 script {
                     if (currentBuild.result == null || currentBuild.result == 'SUCCESS') {
-                        echo "=================================================="
-                        echo "  BUILD SUCCESS - ${env.PROJECT_NAME} pipeline passed."
-                        echo "  All stages completed: Checkout, Build, Test."
-                        echo "=================================================="
+                        echo '=================================================='
+                        echo '  BUILD SUCCESS - Pipeline completed successfully'
+                        echo '  Stages: Checkout, Build, Test'
+                        echo '=================================================='
                     } else {
-                        echo "=================================================="
-                        echo "  BUILD FAILED - ${env.PROJECT_NAME} pipeline failed."
-                        echo "  Check the console output above for details."
-                        echo "=================================================="
+                        echo '=================================================='
+                        echo '  BUILD FAILED - Check console output for details'
+                        echo '=================================================='
                     }
                 }
             }
@@ -81,13 +74,13 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline finished: SUCCESS"
+            echo 'Pipeline finished: SUCCESS'
         }
         failure {
-            echo "Pipeline finished: FAILURE"
+            echo 'Pipeline finished: FAILURE'
         }
         always {
-            echo "Pipeline finished. See console output for details."
+            echo 'Pipeline finished. See console output for details.'
         }
     }
 }
